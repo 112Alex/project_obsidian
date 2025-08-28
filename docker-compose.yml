@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obsidian_app
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - APP_ENV=production
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=obsidian
+      - POSTGRES_SSLMODE=disable
+      - REDIS_ADDR=redis:6379
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - NOTION_API_KEY=${NOTION_API_KEY}
+      - FFMPEG_BINARY_PATH=/usr/bin/ffmpeg
+    volumes:
+      - ./data:/app/data
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: obsidian_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=obsidian
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./configs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: obsidian_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+  redis_data:

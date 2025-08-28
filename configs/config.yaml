@@ -1,0 +1,44 @@
+app:
+  name: project_obsidian
+  env: development
+  port: 8080
+
+log:
+  level: info
+
+postgres:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgres
+  dbname: project_obsidian
+  sslmode: disable
+  max_open_conns: 10
+  max_idle_conns: 5
+  conn_max_lifetime: 1h
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 10
+
+telegram:
+  token: ""
+  webhook_url: ""
+  debug: true
+
+openai:
+  api_key: ""
+  model: whisper-1
+
+deepseek:
+  api_key: ""
+  model: deepseek-chat
+
+ffmpeg:
+  path: /usr/bin/ffmpeg
+
+paths:
+  audio_files: ./data/audio
