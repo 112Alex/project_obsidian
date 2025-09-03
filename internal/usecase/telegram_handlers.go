@@ -319,7 +319,7 @@ func (uc *TelegramHandlersUseCase) HandleVoiceMessage(ctx context.Context, teleg
 
 	// Обработка аудио файла
 	fileName := filepath.Base(filePath)
-	jobID, err := uc.audioProcessingUseCase.ProcessAudio(ctx, user.ID, filePath, fileName)
+	jobID, err := uc.audioProcessingUseCase.ProcessAudio(ctx, telegramID, filePath, fileName)
 	if err != nil {
 		uc.logger.Error("Failed to process audio file",
 			"error", err,
@@ -378,7 +378,7 @@ func (uc *TelegramHandlersUseCase) HandleAudioFile(ctx context.Context, telegram
 
 	// Обработка аудио файла
 	fileName := filepath.Base(filePath)
-	jobID, err := uc.audioProcessingUseCase.ProcessAudio(ctx, user.ID, filePath, fileName)
+	jobID, err := uc.audioProcessingUseCase.ProcessAudio(ctx, telegramID, filePath, fileName)
 	if err != nil {
 		uc.logger.Error("Failed to process audio file",
 			"error", err,

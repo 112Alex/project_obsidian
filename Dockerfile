@@ -1,5 +1,8 @@
 FROM golang:1.22-alpine AS builder
 
+# Install git and CA certificates for secure module download
+RUN apk add --no-cache git ca-certificates && update-ca-certificates
+
 WORKDIR /app
 
 # Установка зависимостей
@@ -17,8 +20,8 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# Установка FFmpeg
-RUN apk add --no-cache ffmpeg
+# Установка FFmpeg и CA сертификатов
+RUN apk add --no-cache ffmpeg ca-certificates && update-ca-certificates
 
 # Копирование бинарного файла из builder
 COPY --from=builder /app/app .

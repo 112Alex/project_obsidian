@@ -195,13 +195,13 @@ func (s *AudioService) ProcessAudioForTranscription(ctx context.Context, inputPa
 func (s *AudioService) GetAudioDuration(ctx context.Context, inputPath string) (float64, error) {
 	// Формирование команды FFprobe
 	cmd := exec.CommandContext(
-		ctx,
-		s.ffmpegPath,
-		"-i", inputPath,
-		"-show_entries", "format=duration",
-		"-v", "quiet",
-		"-of", "csv=p=0",
-	)
+        ctx,
+        "ffprobe",
+        "-i", inputPath,
+        "-show_entries", "format=duration",
+        "-v", "quiet",
+        "-of", "csv=p=0",
+    )
 
 	// Выполнение команды
 	output, err := cmd.Output()

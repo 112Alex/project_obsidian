@@ -37,7 +37,7 @@ CREATE TYPE job_type AS ENUM (
 CREATE TABLE IF NOT EXISTS jobs (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    file_path VARCHAR(255) NOT NULL,
+    audio_file_path VARCHAR(255) NOT NULL,
     file_name VARCHAR(255) NOT NULL,
     duration INTEGER,
     status job_status NOT NULL DEFAULT 'pending',
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     summary TEXT,
     notion_page_id VARCHAR(255),
     notion_database_id VARCHAR(255),
-    error TEXT,
+    error_message TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     completed_at TIMESTAMP WITH TIME ZONE

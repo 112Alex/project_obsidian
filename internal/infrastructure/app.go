@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"context"
 	"strings"
+	"io"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
@@ -143,6 +144,25 @@ func (a *App) Start(ctx context.Context) error {
 			return err
 		}
 		_, err = a.Bot.SendMarkdownMessage(m.Chat.ID, resp)
+		return err
+	})
+
+	// Регистрация обработчика аудио и голосовых сообщений
+	a.Bot.RegisterAudioHandler(func(ctx context.Context, m *tgbotapi.Message, audio io.ReadCloser, fileName string) error {
+		defer audio.Close()
+
+		// Сохраняем аудиофайл
+		filePath, err := a.UseCase.AudioService.SaveAudio(ctx, m.Chat.ID, audio, fileName)
+		if err != nil {
+			return err
+		}
+
+		// Определяем тип сообщения и вызываем соответствующий usecase
+		if m.Voice != nil {
+			_, err = a.UseCase.TelegramHandlersUseCase.HandleVoiceMessage(ctx, m.Chat.ID, m.From.UserName, m.Voice.FileID, filePath)
+		} else if m.Audio != nil {
+			_, err = a.UseCase.TelegramHandlersUseCase.HandleAudioFile(ctx, m.Chat.ID, m.From.UserName, m.Audio.FileID, filePath)
+		}
 		return err
 	})
 

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/112Alex/project_obsidian/internal/domain/entity"
 	"github.com/112Alex/project_obsidian/internal/domain/repository"
 )
@@ -45,6 +47,9 @@ func (r *QueueRepositoryRedis) Pop(ctx context.Context, queueName string) (*enti
 	// Извлекаем задачу из начала очереди с блокировкой
 	result, err := r.redis.BLPop(ctx, time.Second*1, queueName)
 	if err != nil {
+		if err == redis.Nil {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to pop job from queue: %w", err)
 	}
 
