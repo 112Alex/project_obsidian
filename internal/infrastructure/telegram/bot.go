@@ -42,7 +42,7 @@ type CommandHandler func(ctx context.Context, message *tgbotapi.Message) error
 type MessageHandler func(ctx context.Context, message *tgbotapi.Message) error
 
 // AudioHandler представляет собой обработчик аудио сообщения
-type AudioHandler func(ctx context.Context, message *tgbotapi.Message, audio io.ReadCloser, fileName string) error
+type AudioHandler func(ctx context.Context, message *tgbotapi.Message, filePath string, fileName string) error
 
 // NewBot создает нового Telegram бота
 func NewBot(token string, logger *logger.Logger) (*Bot, error) {
@@ -192,8 +192,16 @@ func (b *Bot) handleVoice(ctx context.Context, message *tgbotapi.Message) {
 	}
 	defer voiceReader.Close()
 
+	// Сохранение файла
+	filePath, err := b.SaveAudioFile(voiceReader, message.From.ID, voiceFileName)
+	if err != nil {
+		b.logger.Error("Failed to save voice file", "error", err)
+		b.sendErrorMessage(message.Chat.ID, "Не удалось сохранить голосовое сообщение")
+		return
+	}
+
 	// Вызов обработчика аудио
-	err = b.audioHandler(ctx, message, voiceReader, voiceFileName)
+	err = b.audioHandler(ctx, message, filePath, voiceFileName)
 	if err != nil {
 		b.logger.Error("Failed to handle voice message", "error", err)
 		b.sendErrorMessage(message.Chat.ID, "Произошла ошибка при обработке голосового сообщения")
@@ -227,8 +235,16 @@ func (b *Bot) handleAudio(ctx context.Context, message *tgbotapi.Message) {
 	}
 	defer audioReader.Close()
 
+	// Сохранение файла
+	filePath, err := b.SaveAudioFile(audioReader, message.From.ID, audioFileName)
+	if err != nil {
+		b.logger.Error("Failed to save audio file", "error", err)
+		b.sendErrorMessage(message.Chat.ID, "Не удалось сохранить аудио файл")
+		return
+	}
+
 	// Вызов обработчика аудио
-	err = b.audioHandler(ctx, message, audioReader, audioFileName)
+	err = b.audioHandler(ctx, message, filePath, audioFileName)
 	if err != nil {
 		b.logger.Error("Failed to handle audio message", "error", err)
 		b.sendErrorMessage(message.Chat.ID, "Произошла ошибка при обработке аудио файла")

@@ -13,11 +13,11 @@ import (
 
 // SummarizationProcessingUseCase представляет собой сценарий обработки суммаризации
 type SummarizationProcessingUseCase struct {
-	jobRepo              repository.JobRepository
-	queueService         service.QueueService
+	jobRepo             repository.JobRepository
+	queueService        service.QueueService
 	summarizationService service.SummarizationService
-	notionService        service.NotionService
-	logger               *logger.Logger
+	telegramHandlers    *TelegramHandlersUseCase
+	logger              *logger.Logger
 }
 
 // NewSummarizationProcessingUseCase создает новый сценарий обработки суммаризации
@@ -25,15 +25,15 @@ func NewSummarizationProcessingUseCase(
 	jobRepo repository.JobRepository,
 	queueService service.QueueService,
 	summarizationService service.SummarizationService,
-	notionService service.NotionService,
+	telegramHandlers *TelegramHandlersUseCase,
 	logger *logger.Logger,
 ) *SummarizationProcessingUseCase {
 	return &SummarizationProcessingUseCase{
-		jobRepo:              jobRepo,
-		queueService:         queueService,
+		jobRepo:             jobRepo,
+		queueService:        queueService,
 		summarizationService: summarizationService,
-		notionService:        notionService,
-		logger:               logger,
+		telegramHandlers:    telegramHandlers,
+		logger:              logger,
 	}
 }
 
@@ -74,25 +74,19 @@ func (uc *SummarizationProcessingUseCase) ProcessSummarization(ctx context.Conte
 		return fmt.Errorf("failed to update job summary: %w", err)
 	}
 
-	// Создание задачи для интеграции с Notion
-	notionJob := entity.QueueJob{
-		JobID:     job.JobID,
-		UserID:    job.UserID,
-		JobType:   entity.JobTypeNotion,
-		CreatedAt: time.Now(),
-		Payload: map[string]interface{}{
-			"transcription": transcription,
-			"summary":       summary,
-		},
-	}
-
-	// Добавление задачи в очередь
-	err = uc.queueService.PushJob(ctx, notionJob)
+	// Суммаризация транскрипции
+	summary, err := uc.summarizationService.Summarize(ctx, transcription)
 	if err != nil {
-		uc.logger.Error("Failed to push notion job to queue",
+		uc.logger.Error("Failed to summarize text",
 			"error", err,
 		)
-		return fmt.Errorf("failed to push notion job to queue: %w", err)
+		return fmt.Errorf("failed to summarize text: %w", err)
+	}
+
+	// Отправка обновления прогресса после суммаризации
+	telegramID, message, err := uc.telegramHandlers.SendProgressUpdate(ctx, job.JobID, entity.JobStatusSummarized)
+	if err == nil {
+		uc.telegramHandlers.SendMessage(telegramID, message)
 	}
 
 	// Обновление статуса задачи
@@ -148,6 +142,12 @@ func (uc *SummarizationProcessingUseCase) ProcessSummarizationWithBulletPoints(c
 			"error", err,
 		)
 		return fmt.Errorf("failed to update job summary with bullet points: %w", err)
+	}
+
+	// Отправка обновления прогресса перед интеграцией с Notion
+	telegramID, message, err = uc.telegramHandlers.SendProgressUpdate(ctx, job.JobID, entity.JobStatusIntegrating)  // Предполагая, что есть статус для интеграции
+	if err == nil {
+		uc.telegramHandlers.SendMessage(telegramID, message)
 	}
 
 	// Обновление статуса задачи

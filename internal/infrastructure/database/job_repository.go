@@ -30,10 +30,10 @@ func (r *JobRepositoryPG) Create(ctx context.Context, job *entity.Job) error {
 
 	query := `
 		INSERT INTO jobs (
-			user_id, status, audio_file_path, transcription, summary,
+			user_id, status, audio_file_path, file_name, transcription, summary,
 			notion_page_id, notion_database_id, created_at, updated_at, completed_at, error_message
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id
 	`
 
@@ -43,6 +43,7 @@ func (r *JobRepositoryPG) Create(ctx context.Context, job *entity.Job) error {
 		job.UserID,
 		job.Status,
 		job.AudioFilePath,
+		job.FileName,
 		job.Transcription,
 		job.Summary,
 		job.NotionPageID,
@@ -64,7 +65,7 @@ func (r *JobRepositoryPG) Create(ctx context.Context, job *entity.Job) error {
 func (r *JobRepositoryPG) GetByID(ctx context.Context, id int64) (*entity.Job, error) {
 	query := `
 		SELECT 
-			id, user_id, status, audio_file_path, transcription, summary,
+			id, user_id, status, audio_file_path, file_name, duration, transcription, summary,
 			notion_page_id, notion_database_id, created_at, updated_at, completed_at, error_message
 		FROM jobs
 		WHERE id = $1
@@ -80,6 +81,8 @@ func (r *JobRepositoryPG) GetByID(ctx context.Context, id int64) (*entity.Job, e
 		&job.UserID,
 		&job.Status,
 		&job.AudioFilePath,
+		&job.FileName,
+		&job.Duration,
 		&job.Transcription,
 		&job.Summary,
 		&job.NotionPageID,
@@ -104,7 +107,7 @@ func (r *JobRepositoryPG) GetByID(ctx context.Context, id int64) (*entity.Job, e
 func (r *JobRepositoryPG) GetByUserID(ctx context.Context, userID int64, limit, offset int) ([]*entity.Job, error) {
 	query := `
 		SELECT 
-			id, user_id, status, audio_file_path, transcription, summary,
+			id, user_id, status, audio_file_path, file_name, duration, transcription, summary,
 			notion_page_id, notion_database_id, created_at, updated_at, completed_at, error_message
 		FROM jobs
 		WHERE user_id = $1
@@ -126,6 +129,8 @@ func (r *JobRepositoryPG) GetByUserID(ctx context.Context, userID int64, limit, 
 			&job.UserID,
 			&job.Status,
 			&job.AudioFilePath,
+			&job.FileName,
+			&job.Duration,
 			&job.Transcription,
 			&job.Summary,
 			&job.NotionPageID,
@@ -157,14 +162,16 @@ func (r *JobRepositoryPG) Update(ctx context.Context, job *entity.Job) error {
 		SET 
 			status = $1, 
 			audio_file_path = $2, 
-			transcription = $3, 
-			summary = $4,
-			notion_page_id = $5, 
-			notion_database_id = $6, 
-			updated_at = $7, 
-			completed_at = $8, 
-			error_message = $9
-		WHERE id = $10
+			file_name = $3,
+			duration = $4,
+			transcription = $5, 
+			summary = $6,
+			notion_page_id = $7, 
+			notion_database_id = $8, 
+			updated_at = $9, 
+			completed_at = $10, 
+			error_message = $11
+		WHERE id = $12
 	`
 
 	_, err := r.db.Exec(
@@ -172,6 +179,8 @@ func (r *JobRepositoryPG) Update(ctx context.Context, job *entity.Job) error {
 		query,
 		job.Status,
 		job.AudioFilePath,
+		job.FileName,
+		job.Duration,
 		job.Transcription,
 		job.Summary,
 		job.NotionPageID,

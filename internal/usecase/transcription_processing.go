@@ -17,6 +17,7 @@ type TranscriptionProcessingUseCase struct {
 	queueService         service.QueueService
 	audioService         service.AudioService
 	transcriptionService service.TranscriptionService
+	telegramHandlers     *TelegramHandlersUseCase
 	logger               *logger.Logger
 }
 
@@ -26,6 +27,7 @@ func NewTranscriptionProcessingUseCase(
 	queueService service.QueueService,
 	audioService service.AudioService,
 	transcriptionService service.TranscriptionService,
+	telegramHandlers *TelegramHandlersUseCase,
 	logger *logger.Logger,
 ) *TranscriptionProcessingUseCase {
 	return &TranscriptionProcessingUseCase{
@@ -33,6 +35,7 @@ func NewTranscriptionProcessingUseCase(
 		queueService:         queueService,
 		audioService:         audioService,
 		transcriptionService: transcriptionService,
+		telegramHandlers:     telegramHandlers,
 		logger:               logger,
 	}
 }
@@ -65,6 +68,12 @@ func (uc *TranscriptionProcessingUseCase) ProcessTranscription(ctx context.Conte
 		return fmt.Errorf("failed to process audio for transcription: %w", err)
 	}
 
+	// Отправка обновления прогресса после обработки аудио
+	telegramID, message, err := uc.telegramHandlers.SendProgressUpdate(ctx, job.JobID, entity.JobStatusProcessing)
+	if err == nil {
+		uc.telegramHandlers.SendMessage(telegramID, message)
+	}
+
 	// Транскрибация аудио файла
 	transcription, err := uc.transcriptionService.Transcribe(ctx, processedAudioPath)
 	if err != nil {
@@ -72,6 +81,12 @@ func (uc *TranscriptionProcessingUseCase) ProcessTranscription(ctx context.Conte
 			"error", err,
 		)
 		return fmt.Errorf("failed to transcribe audio: %w", err)
+	}
+
+	// Отправка обновления прогресса после транскрипции
+	telegramID, message, err = uc.telegramHandlers.SendProgressUpdate(ctx, job.JobID, entity.JobStatusTranscribed)
+	if err == nil {
+		uc.telegramHandlers.SendMessage(telegramID, message)
 	}
 
 	// Обновление задачи в базе данных

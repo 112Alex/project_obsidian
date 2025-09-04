@@ -3,7 +3,6 @@ package infrastructure
 import (
 	"context"
 	"strings"
-	"io"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
@@ -148,26 +147,25 @@ func (a *App) Start(ctx context.Context) error {
 	})
 
 	// Регистрация обработчика аудио и голосовых сообщений
-	a.Bot.RegisterAudioHandler(func(ctx context.Context, m *tgbotapi.Message, audio io.ReadCloser, fileName string) error {
-		defer audio.Close()
-
-		// Сохраняем аудиофайл
-		filePath, err := a.UseCase.AudioService.SaveAudio(ctx, m.Chat.ID, audio, fileName)
-		if err != nil {
-			return err
-		}
-
+	a.Bot.RegisterAudioHandler(func(ctx context.Context, m *tgbotapi.Message, filePath string, fileName string) error {
 		// Определяем тип сообщения и вызываем соответствующий usecase
+		var err error
 		if m.Voice != nil {
-			_, err = a.UseCase.TelegramHandlersUseCase.HandleVoiceMessage(ctx, m.Chat.ID, m.From.UserName, m.Voice.FileID, filePath)
+			_, err = a.UseCase.TelegramHandlersUseCase.HandleVoiceMessage(ctx, m.Chat.ID, m.From.UserName, m.Voice.FileID, filePath, fileName)
 		} else if m.Audio != nil {
-			_, err = a.UseCase.TelegramHandlersUseCase.HandleAudioFile(ctx, m.Chat.ID, m.From.UserName, m.Audio.FileID, filePath)
+			_, err = a.UseCase.TelegramHandlersUseCase.HandleAudioFile(ctx, m.Chat.ID, m.From.UserName, m.Audio.FileID, filePath, fileName)
 		}
 		return err
 	})
 
 	// Запуск Telegram бота
 	err = a.Bot.Start()
+	if err != nil {
+		a.Logger.Error("Failed to start Telegram bot",
+			"error", err,
+		)
+		return err
+	}
 	if err != nil {
 		a.Logger.Error("Failed to start Telegram bot",
 			"error", err,

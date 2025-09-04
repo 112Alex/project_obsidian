@@ -286,7 +286,7 @@ func (uc *TelegramHandlersUseCase) HandleJobs(ctx context.Context, telegramID in
 }
 
 // HandleVoiceMessage обрабатывает голосовое сообщение
-func (uc *TelegramHandlersUseCase) HandleVoiceMessage(ctx context.Context, telegramID int64, username string, fileID string, filePath string) (string, error) {
+func (uc *TelegramHandlersUseCase) HandleVoiceMessage(ctx context.Context, telegramID int64, username string, fileID string, filePath string, fileName string) (string, error) {
 	// Логирование начала обработки голосового сообщения
 	uc.logger.Info("Handling voice message",
 		"telegram_id", telegramID,
@@ -318,7 +318,6 @@ func (uc *TelegramHandlersUseCase) HandleVoiceMessage(ctx context.Context, teleg
 	}
 
 	// Обработка аудио файла
-	fileName := filepath.Base(filePath)
 	jobID, err := uc.audioProcessingUseCase.ProcessAudio(ctx, telegramID, filePath, fileName)
 	if err != nil {
 		uc.logger.Error("Failed to process audio file",
@@ -345,7 +344,7 @@ func (uc *TelegramHandlersUseCase) HandleVoiceMessage(ctx context.Context, teleg
 }
 
 // HandleAudioFile обрабатывает аудио файл
-func (uc *TelegramHandlersUseCase) HandleAudioFile(ctx context.Context, telegramID int64, username string, fileID string, filePath string) (string, error) {
+func (uc *TelegramHandlersUseCase) HandleAudioFile(ctx context.Context, telegramID int64, username string, fileID string, filePath string, fileName string) (string, error) {
 	// Логирование начала обработки аудио файла
 	uc.logger.Info("Handling audio file",
 		"telegram_id", telegramID,
@@ -377,7 +376,6 @@ func (uc *TelegramHandlersUseCase) HandleAudioFile(ctx context.Context, telegram
 	}
 
 	// Обработка аудио файла
-	fileName := filepath.Base(filePath)
 	jobID, err := uc.audioProcessingUseCase.ProcessAudio(ctx, telegramID, filePath, fileName)
 	if err != nil {
 		uc.logger.Error("Failed to process audio file",
@@ -473,4 +471,43 @@ func (uc *TelegramHandlersUseCase) SendJobCompletionNotification(ctx context.Con
 	)
 
 	return user.TelegramID, messageBuilder.String(), nil
+}
+
+// SendProgressUpdate prepares a progress update message for the user
+func (uc *TelegramHandlersUseCase) SendProgressUpdate(ctx context.Context, jobID int64, status entity.JobStatus) (int64, string, error) {
+	job, err := uc.jobRepo.GetByID(ctx, jobID)
+	if err != nil {
+		uc.logger.Error("Failed to get job", "error", err)
+		return 0, "", fmt.Errorf("failed to get job: %w", err)
+	}
+	user, err := uc.userRepo.GetByID(ctx, job.UserID)
+	if err != nil {
+		uc.logger.Error("Failed to get user", "error", err)
+		return 0, "", fmt.Errorf("failed to get user: %w", err)
+	}
+	var message string
+	switch status {
+	case entity.JobStatusProcessing:
+		message = "⚙️ Обработка аудио начата."
+	case entity.JobStatusTranscribing:
+		message = "📝 Транскрипция в процессе."
+	case entity.JobStatusTranscribed:
+		message = "✅ Транскрипция завершена. Начинается суммаризация."
+	case entity.JobStatusSummarizing:
+		message = "📊 Суммаризация в процессе с DeepSeek."
+	case entity.JobStatusSummarized:
+		message = "✅ Суммаризация завершена. Начинается интеграция."
+	case entity.JobStatusIntegrating:
+		message = "🔗 Интеграция с Notion в процессе."
+	default:
+		message = fmt.Sprintf("Обновление статуса: %s", status)
+	}
+	message = fmt.Sprintf("%s\nИдентификатор задачи: %d", message, jobID)
+	uc.logger.Info("Prepared progress update", "job_id", jobID, "status", status)
+	return user.TelegramID, message, nil
+}
+
+// SendMessage sends a message to the specified Telegram user
+func (uc *TelegramHandlersUseCase) SendMessage(to int64, text string) error {
+	return uc.bot.SendMessage(to, text)
 }
